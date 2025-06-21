@@ -1,0 +1,29 @@
+{
+  "name": "com.jjasundry.polymorphic-inspector",
+  "version": "1.0.0",
+  "displayName": "Polymorphic Inspector",
+  "description": "A Unity package that adds a unique inspector field that allows a variable to be populated with a subclass.",
+  "unity": "6000.0",
+  "documentationUrl": "https://github.com/arwtsh/PolymorphicInspector/blob/main/Documentation~/documentation.md",
+  "changelogUrl": "https://github.com/arwtsh/PolymorphicInspector/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/arwtsh/PolymorphicInspector/blob/main/LICENSE.MD",
+  "dependencies": {
+  },
+ "keywords": [
+    "Type",
+    "Subclass",
+    "Polymorphism",
+    "Inspector",
+    "Property",
+    "Selector",
+    "Serialized",
+    "Reference"
+  ],
+  "author": {
+    "name": "Adam White",
+    "email": "jjasundry+gamedev@gmail.com",
+    "url": "https://www.linkedin.com/in/adamwhite302/"
+  },
+  "hideInEditor": "false",
+  "license": "CC-BY-4.0"
+}

@@ -1,0 +1,18 @@
+{
+    "name": "PolymorphicInspector.Editor",
+    "rootNamespace": "PolymorphicInspector.Editor",
+    "references": [
+        "GUID:e1a002e0c2dad4b488ba11527a637a04"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
