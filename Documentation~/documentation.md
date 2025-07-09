@@ -31,6 +31,6 @@ public class InspectorExample : MonoBehaviour
 }
 ```
 
-The Polymorphic system automatically finds public inheriting types, both classes and structs implemented interfaces. The attribute [PolymorphicOverride] can be added to a class to specify a UI friendly name and folder path.
+The Polymorphic system automatically finds public inheriting types, both classes and structs implementing interfaces. The attribute [PolymorphicOverride] can be added to a class to specify a UI friendly name and folder path.
 
 The Polymorphic UI encases the default UI of the selected subclass. This allows the subclasses to display their custom UI unempeded.
