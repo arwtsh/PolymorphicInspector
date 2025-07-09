@@ -3,18 +3,16 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.Reflection;
-using System.Linq;
 using UnityEngine.Assertions;
-using UnityEditor.IMGUI.Controls;
 using System.Collections.Generic;
-using System;
 
 namespace PolymorphicInspector.Editor
 {
     [CustomPropertyDrawer(typeof(PolymorphicAttribute))]
     internal class PolymorphicDrawer : PropertyDrawer
     {
-        private const string null_selected = "<null>";
+        private const string NULL_SELECTED = "<null>";
+        private const string MULTIPLE_SELECTED = "—";
 
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
@@ -44,45 +42,39 @@ namespace PolymorphicInspector.Editor
                 return container;
             }
 
-            //For some reason, without this line ApplyModifiedProperties won't redraw this property the first time it's called.
-            container.Bind(property.serializedObject);
-
-            CustomDropdownField selector = new CustomDropdownField(property.displayName);
+            TypeField selector = new TypeField(property.displayName, GetParentType());
             container.Add(selector);
-            SetButtonText(selector, property);
-            AdvancedSelector selectorMenu = new AdvancedSelector(GetParentType(), "Select Type");
-            selector.OnClicked = () => {
-                Rect rect = selector.GetButtonRect();
-                rect.width = Mathf.Max(200, rect.width);
-                selectorMenu.Show(rect);
-            };
-            selectorMenu.OnItemSelected = (type) =>
+
+            // Create the container to hold the property's fields
+            VisualElement propertyContentContainer = new VisualElement();
+
+            //Style the content so it is indented property and looks spererated from everything else.
+            propertyContentContainer.AddToClassList("unity-foldout__content");
+            propertyContentContainer.AddToClassList("unity-collection-view--with-border");
+            propertyContentContainer.style.borderTopWidth = 0;
+            propertyContentContainer.style.borderRightWidth = 0;
+            propertyContentContainer.style.borderBottomRightRadius = 0;
+            propertyContentContainer.style.borderTopLeftRadius = 0;
+            propertyContentContainer.style.borderTopRightRadius = 0;
+            propertyContentContainer.style.paddingBottom = 2;
+            propertyContentContainer.style.paddingLeft = 15;
+
+            container.Add(propertyContentContainer);
+
+            //Using PropertyField adds support for subclasses having their own CustomPropertyDrawers.
+            PropertyField subclassProperty = new PropertyField(property, GetTypeName(GetSelectedType(property)));
+            propertyContentContainer.Add(subclassProperty);
+
+            //Set the initial state of everything
+            UpdateVisuals(property, selector, propertyContentContainer, subclassProperty);
+
+            //Whenever the user changes the type, update everything.
+            //We can't rely on Unity to redraw the inspector, since it sometimes decides not to even after ApplyModifiedProperties gets called.
+            selector.OnTypeSelected = value =>
             {
-                //This will redraw the entire drawer again.
-                UpdateValue(type, property);
+                UpdateValue(value, property);
+                UpdateVisuals(property, selector, propertyContentContainer, subclassProperty);
             };
-
-            if (!HasMultipleDifferentValues(property) && property.managedReferenceValue != null)
-            {
-                VisualElement propertyContentContainer = new VisualElement();
-
-                //Style the content so it is indented property and looks spererated from everything else.
-                propertyContentContainer.AddToClassList("unity-foldout__content");
-                propertyContentContainer.AddToClassList("unity-collection-view--with-border");
-                propertyContentContainer.style.borderTopWidth = 0;
-                propertyContentContainer.style.borderRightWidth = 0;
-                propertyContentContainer.style.borderBottomRightRadius = 0;
-                propertyContentContainer.style.borderTopLeftRadius = 0;
-                propertyContentContainer.style.borderTopRightRadius = 0;
-                propertyContentContainer.style.paddingBottom = 2;
-                propertyContentContainer.style.paddingLeft = 15;
-
-                container.Add(propertyContentContainer);
-
-                //Using PropertyField adds support for subclasses having their own CustomPropertyDrawers.
-                PropertyField subclassProperty = new PropertyField(property, GetTypeName(GetSelectedType(property)));
-                propertyContentContainer.Add(subclassProperty);
-            }
 
             return container;
         }
@@ -102,7 +94,7 @@ namespace PolymorphicInspector.Editor
         {
             if (type == null)
 		    {
-			    return null_selected;
+			    return NULL_SELECTED;
 		    }
             else if (type.GetCustomAttribute(typeof(PolymorphicOverrideAttribute), false) is PolymorphicOverrideAttribute nameAttribute)
             {
@@ -146,15 +138,29 @@ namespace PolymorphicInspector.Editor
             return fieldType;
         }
 
-        private void SetButtonText(CustomDropdownField button, SerializedProperty property)
+        private void UpdateVisuals(SerializedProperty property, TypeField button, VisualElement propertyContainer, PropertyField propertyField)
         {
-            if (HasMultipleDifferentValues(property))
+            System.Type type = GetSelectedType(property);
+            bool hasMultipleDifferentValues = HasMultipleDifferentValues(property);
+
+            if(type != null && !hasMultipleDifferentValues)
             {
-                button.SetText("—");
+                propertyContainer.style.display = DisplayStyle.Flex;
             }
             else
             {
-                button.SetText(GetTypeName(GetSelectedType(property)));
+                propertyContainer.style.display = DisplayStyle.None;
+            }
+
+            if (hasMultipleDifferentValues)
+            {
+                button.SetText(MULTIPLE_SELECTED);
+            }
+            else
+            {
+                string typeName = GetTypeName(type);
+                button.SetText(typeName);
+                propertyField.label = typeName;
             }
         }
 
@@ -167,7 +173,7 @@ namespace PolymorphicInspector.Editor
             if (objects.Length > 1) //It is not editing multiple objects otherwise
             {
                 bool firstTypeSet = false;
-                Type firstType = null; //All of the types will be checked agains the first type, if any are different we immediately know there are different values.
+                System.Type firstType = null; //All of the types will be checked agains the first type, if any are different we immediately know there are different values.
 
                 //Loop through each object that's being edited.
                 for (int i = 0; i < objects.Length && !hasMultipleDifferentValues; i++) //Exits if hasMultipleDifferentValues is true;
@@ -177,10 +183,10 @@ namespace PolymorphicInspector.Editor
                     SerializedObject individualObject = new SerializedObject(targetObject);
                     SerializedProperty individualProperty = individualObject.FindProperty(property.propertyPath);
 
-                    Type thisType = null;
+                    System.Type thisType = null;
                     if(individualProperty.managedReferenceValue != null)
                     {
-                        firstType = individualProperty.managedReferenceValue.GetType();
+                        thisType = individualProperty.managedReferenceValue.GetType();
                     }
 
                     if (!firstTypeSet) //Set the first type
@@ -192,6 +198,7 @@ namespace PolymorphicInspector.Editor
                     {
                         if (!firstType.Equals(thisType))
                         {
+                            Debug.Log("FirstType: " + firstType + "\nThisType: " + thisType);
                             return true;
                         }
                     }
@@ -211,7 +218,7 @@ namespace PolymorphicInspector.Editor
                 if (type != null)
                 {
                     //Create an object using reflection, must have default constructor.
-                    Assert.IsTrue(type.IsValueType || type.GetConstructor(Type.EmptyTypes) != null, "Type " + type.Name + " was selected for a TypeSelector in the inspector but it doesn't have a default constructor.");
+                    Assert.IsTrue(type.IsValueType || type.GetConstructor(System.Type.EmptyTypes) != null, "Type " + type.Name + " was selected for a TypeSelector in the inspector but it doesn't have a default constructor.");
                     
                     object result = null;
 
@@ -226,7 +233,7 @@ namespace PolymorphicInspector.Editor
                     //If json failed, create from scratch.
                     if (result == null)
                     {
-                        result = Activator.CreateInstance(type);
+                        result = System.Activator.CreateInstance(type);
                     }
 
                     individualProperty.managedReferenceValue = result;
@@ -243,10 +250,10 @@ namespace PolymorphicInspector.Editor
 
         private bool IsValidReference(SerializedProperty property)
         {
-            Type parentType = GetParentType();
+            System.Type parentType = GetParentType();
             Assert.IsNotNull(parentType, "The parent type can't be null."); //It shouldn't be null because GetParentType should retrieve the type of the field, not value.
 
-            Type childType; 
+            System.Type childType; 
             if(property.managedReferenceValue != null)
             {
                 childType = property.managedReferenceValue.GetType();
